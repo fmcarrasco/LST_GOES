@@ -1,4 +1,5 @@
 import glob
+import os
 import pandas as pd
 from osgeo import gdal
 from affine import Affine
@@ -38,12 +39,22 @@ class lst_class:
                 mes = str(fecha.month).zfill(2)
                 str_fecha = fecha.strftime('%Y%m%d')
                 fname = self.carpeta + year + '/' + mes + '/' + self.prefijo + str_fecha +'.tif'
-                archivo.append(fname)
+                if os.path.exists(fname):
+                    archivos.append(fname)
+                else:
+                    print('No hay dato para LST-GOES en:', fname)
+                    continue
         else:
             d1 = self.fecha_i.strftime('%Y%m%d')
             year = str(self.fecha_i.year)
             mes = str(self.fecha_i.month).zfill(2)
-            archivos = [self.carpeta + year + '/' + mes + '/' + self.prefijo + d1 + '.tif']
+            fname = self.carpeta + year + '/' + mes + '/' + self.prefijo + d1 + '.tif'
+            if os.path.exists(fname):
+                archivos = [fname]
+            else:
+                print('No hay dato para LST-GOES en:', fname)
+                exit()
+            
         FirstTime = True
         for it, archivo in enumerate(archivos):
             print(archivo)
@@ -65,6 +76,10 @@ class lst_class:
             lst_min[it,:,:] = data
             tiempos.append(ffecha)
         # End of LOOP
+        if not archivos:
+            self.SinDatos = True
+        else:
+            self.SinDatos = False
         self.lst_min = np.squeeze(lst_min)
         self.lat = lat
         self.lon = lon
