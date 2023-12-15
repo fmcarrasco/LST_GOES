@@ -1,4 +1,5 @@
 import netCDF4
+import os
 import numpy as np
 import numpy.ma as ma
 import pandas as pd
@@ -11,6 +12,12 @@ from datetime import datetime, timedelta
 from warnings import filterwarnings
 filterwarnings(action='ignore', category=DeprecationWarning, message='`np.bool` is a deprecated alias')
 
+
+def getGeoTransform(extent, nlines, ncols):
+    resx = (extent[2] - extent[0]) / ncols
+    resy = (extent[3] - extent[1]) / nlines
+    return [extent[0], resx, 0, extent[3] , 0, -resy]
+
 # FECHA Y HORA DE INTERES PARA ANALIZAR
 # NOTA: este producto se disponibiliza uno por hora
 #fecha Formato: yyyymmddHHMM (La hora en UTC)
@@ -22,6 +29,7 @@ class lst_class_horario:
         self.carpeta = self.prefijo + self.fecha0.strftime('%Y') +\
               '/' + self.fecha0.strftime('%j') + '/' + self.fecha0.strftime('%H')+'/'
         self.out_carpeta = out_carpeta
+        os.makedirs(self.out_carpeta, exist_ok=True)
         self.get_data()
 
     def get_data(self):
@@ -34,7 +42,13 @@ class lst_class_horario:
         #
         fs = s3fs.S3FileSystem(anon=True)
         files = fs.ls(self.carpeta)
-        self.archivo = files[0]
+        # Nos quedamos con el archivo que contenga el M6: FullDisk
+        self.archivo = [s for s in files if 'OR_ABI-L2-LSTF-M6' in s][0]
+        if not self.archivo:
+            print('No existe el archivo para la fecha indicada')
+            print(files)
+            print(self.carpeta)
+            exit()
         fname = self.archivo
         fname0 = fname.split('/')[-1]
         with fs.open(fname) as f:
@@ -49,8 +63,7 @@ class lst_class_horario:
                 geo = Proj(proj='geos', h=H, lon_0=lon_0, sweep=sat_sweep)
                 lons_lst, lats_lst = geo(xv, yv, inverse=True)
                 add_seconds = int(goes.variables['time_bounds'][0])
-                date = datetime(2000,1,1,12) + timedelta(seconds=add_seconds)   
-    
+                date = datetime(2000,1,1,12) + timedelta(seconds=add_seconds)
 
                 LST = goes.variables['LST'][y1_lat:y2_lat,x1_lon:x2_lon][::1,::1]
                 DQF = goes.variables['DQF'][y1_lat:y2_lat,x1_lon:x2_lon][::1,::1]
@@ -62,8 +75,7 @@ class lst_class_horario:
                 self.sat_sweep = sat_sweep
                 self.lats = lats_lst
                 self.lons = lons_lst
-                self.LST = LST
-                self.LST_c = LST - 273.
+                self.LST = LST - 273.15
                 self.DQF = DQF
                 self.PQI = PQI
                 mask_lst = np.copy(DQF)
@@ -75,6 +87,41 @@ class lst_class_horario:
                 self.mascara = mask_lst | ma.getmask(LST)
                 self.LST_filtrado = ma.masked_array(LST.data, self.mascara)
     
+    def save_gtiff(self, file_name):
+        from osgeo import gdal, osr, ogr
+        fillvalue = -9999.9
+        extent = [-76.5, -52, -56.5, -20.]
+        #extent = [-93.0, -60.00, -25.00, 18.00]
+        # Get GDAL driver GeoTiff
+        driver = gdal.GetDriverByName('GTiff')
+        # Get dimensions
+        data = ma.filled(self.LST_filtrado, fill_value=fillvalue)
+        nlines = data.shape[0]
+        ncols = data.shape[1]
+        #nbands = len(data.shape)
+        data_type = gdal.GDT_Float32
+        # Create a temp grid
+        #options = ['COMPRESS=JPEG', 'JPEG_QUALITY=80', 'TILED=YES']
+        grid_data = driver.Create('grid_data', ncols, nlines, 1, data_type)#, options)
+        # Write data for each bands
+        grid_data.GetRasterBand(1).SetNoDataValue(fillvalue)
+        grid_data.GetRasterBand(1).WriteArray(data)
+        # Lat/Lon WSG84 Spatial Reference System
+        srs = osr.SpatialReference()
+        srs.ImportFromProj4('+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs')
+        # Setup projection and geo-transform
+        grid_data.SetProjection(srs.ExportToWkt())
+        grid_data.SetGeoTransform(getGeoTransform(extent, nlines, ncols)) 
+        
+        grid_data.FlushCache()
+        # Save the file
+        print(f'Generated GeoTIFF: {file_name}')
+        driver.CreateCopy(self.out_carpeta + file_name, grid_data, 0)
+        
+        # Close the file
+        driver = None
+        grid_data = None
+
     def save_map_lst(self, opt=1):
         import matplotlib.colors as mcolors
         import matplotlib.cm as cm
@@ -91,10 +138,10 @@ class lst_class_horario:
         from cartopy.feature import ShapelyFeature
 
         if opt == 1:
-            LST = self.LST_filtrado - 273.
+            LST = self.LST_filtrado
             figname = self.out_carpeta + 'LST_filtrada_' + self.fecha0.strftime('%Y%m%d%H') + '.jpg'
         else:
-            LST = self.LST_c
+            LST = self.LST
             figname = self.out_carpeta + 'LST_' + self.fecha0.strftime('%Y%m%d%H') + '.jpg'
         
         provincias = cartopy.feature.NaturalEarthFeature(category='cultural',

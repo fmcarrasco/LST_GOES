@@ -22,6 +22,7 @@ def mapa_base(llat, llon):
     shp = Reader(natural_earth(resolution='10m', category='cultural',
                                name='admin_1_states_provinces_lines'))
     countries = shp.records()
+    
 
     # Comenzamos la Figura
     fig = plt.figure(figsize=(6, 8))
@@ -30,6 +31,8 @@ def mapa_base(llat, llon):
     ax.coastlines(resolution='10m', zorder=1)
     ax.add_feature(cpf.BORDERS, linestyle='-', zorder=1)
     for country in countries:
+        print(country)
+        exit()
         if country.attributes['adm0_name'] == 'Argentina':
             ax.add_geometries( [country.geometry], ccrs.PlateCarree(),
                                 edgecolor='black', facecolor='none',

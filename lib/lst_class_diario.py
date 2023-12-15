@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import numpy.ma as ma
 import pandas as pd
@@ -7,15 +8,21 @@ from netCDF4 import Dataset
 
 from datetime import datetime, timedelta
 
-
 from warnings import filterwarnings
 filterwarnings(action='ignore', category=DeprecationWarning, message='`np.bool` is a deprecated alias')
+
+
+def getGeoTransform(extent, nlines, ncols):
+    resx = (extent[2] - extent[0]) / ncols
+    resy = (extent[3] - extent[1]) / nlines
+    return [extent[0], resx, 0, extent[3] , 0, -resy]
 
 
 class lst_class_diario:
     def __init__(self, fecha, out_carpeta, filtrado=1):
         self.fecha0 = datetime.strptime(fecha, '%Y%m%d')
         self.out_carpeta = out_carpeta
+        os.makedirs(self.out_carpeta, exist_ok=True)
         self.get_data(filtrado)
 
     def get_data(self, filtrado):
@@ -24,13 +31,6 @@ class lst_class_diario:
         horas = np.arange(0,13)
         arrays = []
         for hora in horas:
-            '''
-            if hora < 3:
-                fecha1 = self.fecha0 - timedelta(days=1)
-                fecha = fecha1.strftime('%Y%m%d') + str(hora).zfill(2) + '00' # Formato: yyyymmddHHMM (La hora en UTC)
-            else:
-                fecha = self.fecha0.strftime('%Y%m%d') + str(hora).zfill(2) + '00'
-            '''
             fecha = self.fecha0.strftime('%Y%m%d') + str(hora).zfill(2) + '00'
             a = lst_class_horario(fecha, self.out_carpeta)
             if hora == 0:
@@ -41,17 +41,59 @@ class lst_class_diario:
             else:
                 arrays.append(a.LST)
         F = ma.stack(arrays, axis=0)
-        print(F.shape)
         c_val = ma.count(F, axis=0)  # Contamos la cantidad de datos
         l_val = ma.min(F, axis=0)  # Calculamos la Tmin
-        self.LSTmin = ma.masked_array(l_val.data, c_val < 7)
+        #new_mask = (c_val < 7) | ma.getmask(l_val)
+        #new_mask = (c_val < 7)
+        new_mask = ma.getmask(l_val)
+        self.LSTmin = ma.masked_array(l_val.data, new_mask)
+        self.LSTcount = c_val
     
+    def save_gtiff(self, file_name):
+        from osgeo import gdal, osr, ogr
+        fillvalue = -9999.9
+        extent = [-76.5, -52, -56.5, -20.]
+        #extent = [-93.0, -60.00, -25.00, 18.00]
+        # Get GDAL driver GeoTiff
+        driver = gdal.GetDriverByName('GTiff')
+        # Get dimensions
+        data = ma.filled(self.LSTmin, fill_value=fillvalue)
+        nlines = data.shape[0]
+        ncols = data.shape[1]
+        data2 = ma.filled(self.LSTcount, fill_value=fillvalue)
+        data_type = gdal.GDT_Float32
+        ########################
+        # Create a temp grid
+        grid_data = driver.Create('grid_data', ncols, nlines, 1, data_type)#, options)
+        # Write data for LSTmin y LSTcount
+        grid_data.GetRasterBand(1).SetNoDataValue(fillvalue)
+        grid_data.GetRasterBand(1).WriteArray(data)
+        grid_data.GetRasterBand(2).SetNoDataValue(fillvalue)
+        grid_data.GetRasterBand(2).WriteArray(data2)
+        # Lat/Lon WSG84 Spatial Reference System
+        srs = osr.SpatialReference()
+        srs.ImportFromProj4('+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs')
+        # Setup projection and geo-transform
+        grid_data.SetProjection(srs.ExportToWkt())
+        grid_data.SetGeoTransform(getGeoTransform(extent, nlines, ncols)) 
+        
+        grid_data.FlushCache()
+        # Save the file
+        print(f'Generated GeoTIFF: {file_name}')
+        driver.CreateCopy(self.out_carpeta + file_name, grid_data, 0)
+        
+        # Close the file
+        driver = None
+        grid_data = None
+
+
+
     def mapa_helada_ORA(self):
         from figure_functions import mapa_temperatura_minima_superficial
         l_lat = [-56.5, -20. ]
         l_lon = [-76.5, -52. ]
         nfig = self.out_carpeta + 'LSTmin_ORA_' + self.fecha0.strftime('%Y%m%d') + '.jpg'
-        mapa_temperatura_minima_superficial(self.lons, self.lats, self.LSTmin - 273., l_lat, l_lon, nfig)
+        mapa_temperatura_minima_superficial(self.lons, self.lats, self.LSTmin, l_lat, l_lon, nfig)
     
     def mapa_helada_diario(self):
         import matplotlib.colors as mcolors
@@ -108,7 +150,7 @@ class lst_class_diario:
         ax = fig.add_subplot(111, projection=projection)
         ax.set_extent(extents=extent, crs=projection)
 
-        img = plt.pcolormesh(self.lons, self.lats, self.LSTmin-273, vmin=-16, vmax=12, cmap=cmap_lst,
+        img = plt.pcolormesh(self.lons, self.lats, self.LSTmin, vmin=-16, vmax=12, cmap=cmap_lst,
                            transform=ccrs.PlateCarree())
         plt.colorbar(img, pad=0.01, aspect=42, shrink=0.5, ticks=np.arange(-16,12.1,2))
 

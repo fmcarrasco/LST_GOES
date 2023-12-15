@@ -1,0 +1,13 @@
+name: aws-v2
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11.6
+  - s3fs=2023.12-0
+  - gdal=3.8.1
+  - matplotlib=3.8.2
+  - cartopy=0.22.0
+  - pyproj=3.6.1
+  - pandas=2.1.3
+  - netcdf4=1.6.5
+
