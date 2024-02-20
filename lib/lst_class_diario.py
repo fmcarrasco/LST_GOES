@@ -121,8 +121,7 @@ class lst_class_diario:
                                              name='admin_0_countries',
                                              scale='10m',
                                              facecolor='none')
-        lst_colors = [ [255/255,255/255,255/255], # +12 to +10°C
-               [ 74/255,  8/255,143/255], # +10 to  +8°C
+        lst_colors = [ [ 74/255,  8/255,143/255], # +10 to  +8°C
                [ 51/255,  4/255,180/255], #  +8 to  +6°C
                [ 45/255, 46/255,255/255], #  +6 to  +4°C
                [ 38/255,105/255,247/255], #  +4 to  +2°C
@@ -134,12 +133,17 @@ class lst_class_diario:
                [207/255,236/255,204/255], #  -8 to -10°C
                [221/255,242/255,209/255], # -10 to -12°C
                [233/255,242/255,209/255], # -12 to -14°C
-               [218/255,220/255,217/255]  # -14 to -16°C
              ]
+        lst_colors = ["#4B088A","#3104B4","#2E2EFE","#2E64FE",
+                      "#0080FF","#58ACFA","#81DAF5","#A3E2C3",
+                      "#BAE9C6","#CDEECA","#DEF1D0","#EAF2D6"]
         cmap_lst = mcolors.ListedColormap(lst_colors)
-        cmap_lst.set_bad(color='green')
-        bounds = np.array([-12,-10,-8,-6,-4,-2,0,2,4,6,8,10,12,14,16])
-        norm_topo = mcolors.BoundaryNorm(boundaries=bounds, ncolors=14)
+        cmap_lst.set_bad(color='white')
+        # Color over +10 and under -14 
+        #cmap_lst.set_extremes(under=(74/255,  8/255,143/255), over=(218/255,220/255,217/255))
+        cmap_lst.set_extremes(under='#4B088A', over='#DADCDA')
+        bounds = np.array([-10,-8,-6,-4,-2,0,2,4,6,8,10,12,14])
+        norm_topo = mcolors.BoundaryNorm(boundaries=bounds, ncolors=12)
 
         # Definimos proyeccion
         projection = ccrs.PlateCarree()
@@ -150,9 +154,9 @@ class lst_class_diario:
         ax = fig.add_subplot(111, projection=projection)
         ax.set_extent(extents=extent, crs=projection)
 
-        img = plt.pcolormesh(self.lons, self.lats, self.LSTmin, vmin=-16, vmax=12, cmap=cmap_lst,
+        img = plt.pcolormesh(self.lons, self.lats, self.LSTmin, vmin=-14, vmax=10, cmap=cmap_lst,
                            transform=ccrs.PlateCarree())
-        plt.colorbar(img, pad=0.01, aspect=42, shrink=0.5, ticks=np.arange(-16,12.1,2))
+        plt.colorbar(img, pad=0.01, aspect=42, shrink=0.5, ticks=np.arange(-14,10.1,2))
 
         ax.add_feature(provincias, linewidth=0.25, edgecolor='k', facecolor='None')
         ax.add_feature(paises, linewidth=1.0, edgecolor='k', facecolor='None')

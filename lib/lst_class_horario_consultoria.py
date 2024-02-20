@@ -4,6 +4,7 @@ import numpy as np
 import numpy.ma as ma
 import pandas as pd
 from pyproj import Proj
+
 from netCDF4 import Dataset
 
 from datetime import datetime, timedelta
@@ -21,7 +22,7 @@ def getGeoTransform(extent, nlines, ncols):
 # NOTA: este producto se disponibiliza uno por hora
 #fecha Formato: yyyymmddHHMM (La hora en UTC)
 
-class lst_class_horario:
+class lst_horario:
     def __init__(self, fecha, out_carpeta):
         self.fecha0 = datetime.strptime(fecha, '%Y%m%d%H%M')
         self.prefijo = 'noaa-goes16/ABI-L2-LSTF/'
@@ -40,51 +41,67 @@ class lst_class_horario:
         y2_lat = 1025
         #
         fs = s3fs.S3FileSystem(anon=True)
-        files = fs.ls(self.carpeta)
+
+        try:
+            files = fs.ls(self.carpeta)
+        except:
+            print('No existe la carpeta:', self.carpeta )
+            files = []
         # Nos quedamos con el archivo que contenga el M6: FullDisk
-        self.archivo = [s for s in files if 'OR_ABI-L2-LSTF-M6' in s][0]
+        try:
+            self.archivo = [s for s in files if 'OR_ABI-L2-LSTF-M6' in s][0]
+        except:
+            print('No existe el archivo para la fecha:', self.fecha0)
+            print('No existe el archivo en la lista de archivos:', files)
+            self.archivo = ''
+
         if not self.archivo:
+            
             print('No existe el archivo para la fecha indicada')
             print(files)
             print(self.carpeta)
-            exit()
-        fname = self.archivo
-        fname0 = fname.split('/')[-1]
-        with fs.open(fname) as f:
-            with netCDF4.Dataset(fname0, memory=f.read()) as goes:
-                H = goes.variables['goes_imager_projection'].getncattr('perspective_point_height')
-                lon_0 = goes.variables['goes_imager_projection'].getncattr('longitude_of_projection_origin')
-                sat_sweep = goes.variables['goes_imager_projection'].getncattr('sweep_angle_axis')
-                x = goes.variables['x'][x1_lon:x2_lon] * H
-                y = goes.variables['y'][y1_lat:y2_lat] * H
-                xv, yv = np.meshgrid(np.array(x), np.array(y))
-                # Doc: https://proj.org/operations/projections/geos.html
-                geo = Proj(proj='geos', h=H, lon_0=lon_0, sweep=sat_sweep)
-                lons_lst, lats_lst = geo(xv, yv, inverse=True)
-                add_seconds = int(goes.variables['time_bounds'][0])
-                date = datetime(2000,1,1,12) + timedelta(seconds=add_seconds)
+            print('Solo se agregan matrices con NaN: LST y DQF')
 
-                LST = goes.variables['LST'][y1_lat:y2_lat,x1_lon:x2_lon][::1,::1]
-                DQF = goes.variables['DQF'][y1_lat:y2_lat,x1_lon:x2_lon][::1,::1]
-                PQI = goes.variables['PQI'][y1_lat:y2_lat,x1_lon:x2_lon][::1,::1]
+            self.LST = np.empty((290,245))
+            self.LST[:] = np.nan
+            self.DQF = np.empty((290,245))
+            self.DQF[:] = np.nan
+        else:
+            fname = self.archivo
+            fname0 = fname.split('/')[-1]
+            with fs.open(fname) as f:
+                with netCDF4.Dataset(fname0, memory=f.read()) as goes:
+                    H = goes.variables['goes_imager_projection'].getncattr('perspective_point_height')
+                    lon_0 = goes.variables['goes_imager_projection'].getncattr('longitude_of_projection_origin')
+                    sat_sweep = goes.variables['goes_imager_projection'].getncattr('sweep_angle_axis')
+                    x = goes.variables['x'][x1_lon:x2_lon] * H
+                    y = goes.variables['y'][y1_lat:y2_lat] * H
+                    xv, yv = np.meshgrid(np.array(x), np.array(y))
+                    # Doc: https://proj.org/operations/projections/geos.html
+                    geo = Proj(proj='geos', h=H, lon_0=lon_0, sweep=sat_sweep)
+                    lons_lst, lats_lst = geo(xv, yv, inverse=True)
+                    add_seconds = int(goes.variables['time_bounds'][0])
+                    date = datetime(2000,1,1,12) + timedelta(seconds=add_seconds)
 
-                # Guardamos variables a la clase
-                self.H = H
-                self.lon_0 = lon_0
-                self.sat_sweep = sat_sweep
-                self.lats = lats_lst
-                self.lons = lons_lst
-                self.LST = LST - 273.15
-                self.DQF = DQF
-                self.PQI = PQI
-                mask_lst = np.copy(DQF)
-                # Asigno 0 donde DQF==0 (calidad buena de la estimacion LST)
-                mask_lst[DQF == 0] = 0
-                # Asigno 1 donde la calidad de la estimacion de LST es media o baja.
-                mask_lst[DQF > 0] = 1
-                # Generamos la nueva mascara incluyendo lo que ya venia enmascarado.
-                self.mascara = mask_lst | ma.getmask(LST)
-                self.LST_filtrado = ma.masked_array(LST.data, self.mascara) - 273.15
+                    LST = goes.variables['LST'][y1_lat:y2_lat,x1_lon:x2_lon][::1,::1]
+                    DQF = goes.variables['DQF'][y1_lat:y2_lat,x1_lon:x2_lon][::1,::1]
+
+                    # Guardamos variables a la clase
+                    self.H = H
+                    self.lon_0 = lon_0
+                    self.sat_sweep = sat_sweep
+                    self.lats = lats_lst
+                    self.lons = lons_lst
+                    self.LST = LST - 273.15
+                    self.DQF = DQF
+                    mask_lst = np.copy(DQF)
+                    # Asigno 0 donde DQF==0 (calidad buena de la estimacion LST)
+                    mask_lst[DQF == 0] = 0
+                    # Asigno 1 donde la calidad de la estimacion de LST es media o baja.
+                    mask_lst[DQF > 0] = 1
+                    # Generamos la nueva mascara incluyendo lo que ya venia enmascarado.
+                    self.mascara = mask_lst | ma.getmask(LST)
+                    self.LST_filtrado = ma.masked_array(LST.data, self.mascara) - 273.15
     
     def save_gtiff(self, file_name):
         os.makedirs(self.out_carpeta, exist_ok=True)
@@ -123,7 +140,6 @@ class lst_class_horario:
         grid_data = None
 
     def save_map_lst(self, opt=1):
-        os.makedirs(self.out_carpeta, exist_ok=True)
         import matplotlib.colors as mcolors
         import matplotlib.cm as cm
         import matplotlib as mpl
@@ -137,6 +153,8 @@ class lst_class_horario:
 
         from cartopy.io.shapereader import Reader
         from cartopy.feature import ShapelyFeature
+
+        os.makedirs(self.out_carpeta, exist_ok=True)
 
         if opt == 1:
             LST = self.LST_filtrado
@@ -204,7 +222,6 @@ class lst_class_horario:
         plt.savefig(figname, dpi=150, bbox_inches='tight')
 
     def save_map_DQF(self):
-        os.makedirs(self.out_carpeta, exist_ok=True)
         import matplotlib.colors as mcolors
         import matplotlib.cm as cm
         import matplotlib as mpl
@@ -218,6 +235,8 @@ class lst_class_horario:
 
         from cartopy.io.shapereader import Reader
         from cartopy.feature import ShapelyFeature
+        
+        os.makedirs(self.out_carpeta, exist_ok=True)
         
         provincias = cartopy.feature.NaturalEarthFeature(category='cultural',
                                                  name='admin_1_states_provinces_lines',

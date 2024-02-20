@@ -30,17 +30,38 @@ b.mapa_helada_ORA()
 b.mapa_helada_diario()
 
 
-for hora in range(11,12):
+for hora in range(0,12):
     print(hora)
     fecha = '20220622'+str(hora).zfill(2)+'00'
     a = lst_class_horario(fecha, './salidas/')
     a.save_gtiff(file_name=fecha+'.tiff')
 '''
 
-fechad = '20231012'
-b = lst_class_diario(fechad, './salidas/')
-#b.save_gtiff(file_name='LSTmin_' + fechad + '.tiff')
-b.mapa_helada_ORA()
+
+
+for hora in range(0,12):
+    fechad = '20230905' + str(hora).zfill(2) + '00'
+    b = lst_class_horario(fechad, './salidas/20230905/')
+    b.save_map_lst(opt=1)
+
+fecha = '20230905'
+b = lst_class_diario(fecha, './salidas/')
 b.mapa_helada_diario()
 
+for hora in range(0,12):
+    fechad = '20230924' + str(hora).zfill(2) + '00'
+    b = lst_class_horario(fechad, './salidas/20230924/')
+    b.save_map_lst(opt=1)
 
+fecha = '20230924'
+b = lst_class_diario(fecha, './salidas/')
+b.mapa_helada_diario()
+
+for hora in range(0,12):
+    fechad = '20230925' + str(hora).zfill(2) + '00'
+    b = lst_class_horario(fechad, './salidas/20230925/')
+    b.save_map_lst(opt=1)
+
+fecha = '20230925'
+b = lst_class_diario(fecha, './salidas/')
+b.mapa_helada_diario()
