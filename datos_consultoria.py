@@ -10,18 +10,18 @@ from lst_class_horario_consultoria import lst_horario
 
 start = time.time()
 
-mes = 2
-nmes = 'Febrero'
+mes = 4
+nmes = 'Abril'
 
 if mes in [10,11,12]:
     years = np.arange(2019,2024)
-elif mes in [1,2,3]:
+elif mes in [1,2,3,4]:
     years = np.arange(2019,2025)
 
 for year in years:
     print('Trabajando el año', year)
-    ini = str(year)+'0201'
-    fin = str(year)+'0301'
+    ini = str(year)+'0401'
+    fin = str(year)+'0501'
     fechas = pd.date_range(start=ini, end=fin, freq='H')
     print(fechas[0:-1])
     ntime = len(fechas[0:-1])

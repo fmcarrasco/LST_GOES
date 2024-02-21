@@ -58,6 +58,7 @@ def subset_goes(ds, lon_a, lat_a):
 fecha = '202311230500' # Formato: yyyymmddHHMM (La hora en UTC)
 print(fecha)
 a = lst_class_horario(fecha, './salidas/')
+print(a.LST.shape)
 # Punto de extracción test
 lati = -37.46
 loni = -59.09
@@ -171,6 +172,7 @@ ax.scatter(lon_est, lat_est, 13, marker='s', color='r', label='Estaciones', zord
 
 ax.scatter(lon_recorte, lat_recorte, 0.5, color='b', transform=ccrs.Geodetic(), label=u'lat/lon retícula', zorder=0)
 
+
 ax.plot([lon_a[0], lon_a[1], lon_a[1], lon_a[0], lon_a[0]], [lat_a[0], lat_a[0], lat_a[1], lat_a[1], lat_a[0]],
          color='black', linewidth=1, marker='.',
          transform=ccrs.Geodetic(), #remove this line to get straight lines
@@ -181,4 +183,48 @@ ax.add_feature(provincias, linewidth=0.25, edgecolor='k', facecolor='None')
 ax.add_feature(paises, linewidth=1.0, edgecolor='k', facecolor='None')
 ax.add_feature(shape_feature1, linestyle='-', linewidth=0.3)
 plt.savefig('./salidas/Figura3.jpg', dpi=150, bbox_inches='tight')
+plt.close(fig)
+
+
+##########################################################################
+############## Figura 4 ##################################################
+# Azul, Benito Juarez, Olavarria, Tandil
+lat_est = [-36.833333, -37.716667, -36.883333, -37.233333]
+lon_est = [-59.883333, -59.783333, -60.216667, -59.25]
+
+lat_recorte = lats.ravel()
+lon_recorte = lons.ravel()
+
+lon_pix = [lons[5,9], lons[8,6], lons[11,11], lons[11,21], lons[8,16], lons[5,19]]
+lat_pix = [lats[5,9], lats[8,6], lats[11,11], lats[11,21], lats[8,16], lats[5,19]]
+numeros = [str(i+1) for i in np.arange(len(lon_pix))]
+
+fig=plt.figure(figsize=[11,10])
+
+ax = fig.add_subplot(111, projection=projection)
+ax.set_extent(extents=extent, crs=projection)
+
+
+ax.scatter(lon_est, lat_est, 13, marker='s', color='r', label='Estaciones', zorder=2)
+
+ax.scatter(lon_pix, lat_pix, 0.5, color='b', transform=ccrs.Geodetic(), label=u'lat/lon retícula', zorder=0)
+ax.scatter(lon_pix, lat_pix, 12, marker='s', color='y', zorder=-1)
+
+for i, txt in enumerate(numeros):
+    if i == 3:
+          ax.annotate(txt, (lon_pix[i] + 0.09, lat_pix[i]))
+    else:
+          ax.annotate(txt, (lon_pix[i] - 0.16, lat_pix[i]))
+
+
+ax.plot([lon_a[0], lon_a[1], lon_a[1], lon_a[0], lon_a[0]], [lat_a[0], lat_a[0], lat_a[1], lat_a[1], lat_a[0]],
+         color='black', linewidth=1, marker='.',
+         transform=ccrs.Geodetic(), #remove this line to get straight lines
+         label=u'Área de interés', zorder=1)
+ax.legend()
+ax.set_title('Area de recorte, estaciones (rojo) y puntos de reticula seleccionados (amarillo)', loc='left')
+ax.add_feature(provincias, linewidth=0.25, edgecolor='k', facecolor='None')
+ax.add_feature(paises, linewidth=1.0, edgecolor='k', facecolor='None')
+ax.add_feature(shape_feature1, linestyle='-', linewidth=0.3)
+plt.savefig('./salidas/Figura4.jpg', dpi=150, bbox_inches='tight')
 plt.close(fig)
