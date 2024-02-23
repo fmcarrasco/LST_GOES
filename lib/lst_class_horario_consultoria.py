@@ -48,12 +48,16 @@ class lst_horario:
             print('No existe la carpeta:', self.carpeta )
             files = []
         # Nos quedamos con el archivo que contenga el M6: FullDisk
+        print(files)
         try:
             self.archivo = [s for s in files if 'OR_ABI-L2-LSTF-M6' in s][0]
         except:
             print('No existe el archivo para la fecha:', self.fecha0)
             print('No existe el archivo en la lista de archivos:', files)
-            self.archivo = ''
+            if not files:
+                self.archivo = ''
+            else:
+                self.archivo = files[0]
 
         if not self.archivo:
             
@@ -237,7 +241,7 @@ class lst_horario:
         from cartopy.feature import ShapelyFeature
         
         os.makedirs(self.out_carpeta, exist_ok=True)
-        
+
         provincias = cartopy.feature.NaturalEarthFeature(category='cultural',
                                                  name='admin_1_states_provinces_lines',
                                                  scale='10m',

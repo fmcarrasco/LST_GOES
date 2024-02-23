@@ -94,8 +94,8 @@ extent = [-63.94, -56.54, -41.43, -33.07]
 
 
 
-mes = 10
-nmes = 'Octubre'
+mes = 4
+nmes = 'Abril'
 
 lon_a = [-61.5, -58.5]
 lat_a = [-38.1, -36.1]
@@ -107,14 +107,15 @@ elif mes in [1,2,3,4]:
 
 for year in years:
     print('Trabajando el año', year)
-    ini = str(year)+'1001'
-    fin = str(year)+'1101'
+    ini = str(year)+'0401'
+    fin = str(year)+'0501'
     fechas = pd.date_range(start=ini, end=fin, freq='H')
     fechasd = pd.date_range(start=ini, end=fin)
-    print((fechasd[0:-1]))
+    #print((fechasd[0:-1]))
     ntime = len(fechasd[0:-1])
     ny = 290
     nx = 245
+    print('./salidas/LST_' + nmes + '_' + str(year) + '.npy')
     LST = np.load('./salidas/LST_' + nmes + '_' + str(year) + '.npy')
     DQF = np.load('./salidas/DQF_' + nmes + '_' + str(year) + '.npy')
     lats = np.load('./salidas/lats.npy')
@@ -130,9 +131,9 @@ for year in years:
     LSTmin[:] = np.nan
     conteo = np.empty((ntime, ny, nx))
     conteo[:] = np.nan
-    for dia, it in enumerate(np.arange(0,744,24)):
+    for dia, it in enumerate(np.arange(0,len(fechas[0:-1]),24)):
           conteo[dia,:,:] = np.count_nonzero(~np.isnan(LST[it:it+13,:,:]), axis=0)
-          LSTmin[dia,:,:] = np.nanmean(LST[it:it+13,:,:], axis=0)
+          LSTmin[dia,:,:] = np.nanmin(LST[it:it+13,:,:], axis=0)
     
     nfile0 = './salidas/LSTmin_' + nmes + '_' + str(year) + '.npy'
     nfile1 = './salidas/COUNTmin_' + nmes + '_' + str(year) + '.npy'
@@ -140,10 +141,10 @@ for year in years:
     np.save(nfile1, conteo)
          
 
-    LSTmin_sub = LSTmin[:,x1:x2,y1:y2]
-    conteo_sub = conteo[:,x1:x2,y1:y2]
-    print(LSTmin_sub[:,5,9])
-    print(conteo_sub[:,5,9])
+    #LSTmin_sub = LSTmin[:,x1:x2,y1:y2]
+    #conteo_sub = conteo[:,x1:x2,y1:y2]
+    #print(LSTmin_sub[:,5,9])
+    #print(conteo_sub[:,5,9])
 
 '''
 fig=plt.figure(figsize=[11,10])

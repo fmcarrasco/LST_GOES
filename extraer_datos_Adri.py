@@ -46,8 +46,10 @@ if mes in [10,11,12]:
 elif mes in [1,2,3,4]:
     years = np.arange(2019,2025)
 
-pares = [(5,9), (8,6), (11,11), (11,21), (8,16), (5,19)]
-nomb = ['LST pixel 1', 'conteo pixel 1', 'LST pixel 2', 'conteo pixel 2', 'LST pixel 3', 'conteo pixel 3',
+pares = [(6, 16), (13,15), (6,13), (9,20), (5,9), (8,6), (11,11), (11,21), (8,16), (5,19)]
+nomb = ['Azul', 'conteo Azul', 'Benito Juarez', 'conteo Benito Juarez', 
+        'Olavarria', 'conteo Olavarria', 'Tandil', 'conteo Tandil',
+        'LST pixel 1', 'conteo pixel 1', 'LST pixel 2', 'conteo pixel 2', 'LST pixel 3', 'conteo pixel 3',
         'LST pixel 4', 'conteo pixel 4', 'LST pixel 5', 'conteo pixel 5', 'LST pixel 6', 'conteo pixel 6'  ]
 
 
@@ -68,27 +70,37 @@ for year in years:
     lista_fec.append(fechasd[0:-1])
 LSTmin = np.concatenate(lista_lst, axis=0)
 conteo = np.concatenate(lista_cnt, axis=0)
-indice = lista_fec[0].union(lista_fec[1]).union(lista_fec[2]).union(lista_fec[3]).union(lista_fec[4])
+
+if mes in [10, 11, 12]:
+     indice = lista_fec[0].union(lista_fec[1]).union(lista_fec[2]).union(lista_fec[3]).union(lista_fec[4])
+else:
+     indice = lista_fec[0].union(lista_fec[1]).union(lista_fec[2]).union(lista_fec[3]).union(lista_fec[4]).union(lista_fec[5])
 
 #lista_fec[0].union(lista_fec[1:])
 #print(lista_fec[0])
 lats = np.load('./salidas/lats.npy')
 lons = np.load('./salidas/lons.npy')
+#
+# Azul, Benito Juarez, Olavarria, Tandil
+lat_est = [-36.833333, -37.716667, -36.883333, -37.233333]
+lon_est = [-59.883333, -59.783333, -60.216667, -59.25]
+
 # Area de extraccion de datos
 x1, x2, y1, y2 = subset_goes(lons, lats, lon_a, lat_a)
 latsub = lats[x1:x2,y1:y2]
 lonsub = lons[x1:x2,y1:y2]
 LSTmin_sub = LSTmin[:, x1:x2,y1:y2]
 conteo_sub = conteo[:, x1:x2,y1:y2]
+
 # preparamos el Dataframe para excel
-test = np.empty((len(years)*31, 12))
+test = np.empty((len(indice), len(nomb)))
 test[:] = np.nan
 for i, par in enumerate(pares):
     test[:,i*2] = LSTmin_sub[:,par[0], par[1] ]
     test[:,i*2+1] = conteo_sub[:,par[0], par[1] ]
 
 df = pd.DataFrame(index=indice, data=test, columns= nomb)
-df.to_excel('./salidas/LST_pixels.xlsx')
+df.to_excel('./salidas/LST_pixels_octubre.xlsx')
 
 
 end = time.time()

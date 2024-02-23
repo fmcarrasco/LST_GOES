@@ -11,7 +11,7 @@ salidas/*.jpg
 *.npy
 # C extensions
 *.so
-
+*.xlsx
 # Distribution / packaging
 .Python
 build/

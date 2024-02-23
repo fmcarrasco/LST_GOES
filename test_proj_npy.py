@@ -5,7 +5,7 @@ import datetime as dt
 
 import sys
 sys.path.append('./lib')
-from lst_class_horario_consultoria import lst_horario
+from lst_class_horario import lst_class_horario
 from lst_class_diario import lst_class_diario
 from figure_functions import mapa_base, colores_tmin, legend_temp
 
@@ -27,50 +27,80 @@ from cartopy.feature import ShapelyFeature
 
 from cartopy.io.shapereader import natural_earth
 
-def get_nearest_index(ds, loni, lati):
+def get_nearest_index(lons, lats, loni, lati):
         # Transformar de EPSG:4326 a ECEF (EPSG:4978)
         # GtiFF viene en EPSG:4326 y pasamos a coord cartesianas EPSG:4978
         transformer = Transformer.from_crs(4326, 4978)
-        X, Y = transformer.transform(ds.lons, ds.lats)
+        X, Y = transformer.transform(lons, lats)
         x, y = transformer.transform(loni,lati)
         distance = ((x-X)**2 + (y-Y)**2)**0.5
         pos_index = np.unravel_index(distance.argmin(), distance.shape)
 
         return pos_index
 
-def subset_goes(ds, lon_a, lat_a):
+def subset_goes(lons, lats, lon_a, lat_a):
         lon1, lon2 = lon_a
         lat1, lat2 = lat_a
-        x1, y1 = get_nearest_index(ds, lon1, lat1)
-        x2, y2 = get_nearest_index(ds, lon2, lat1)
-        x3, y3 = get_nearest_index(ds, lon2, lat2)
-        x4, y4 = get_nearest_index(ds, lon1, lat2)
+        x1, y1 = get_nearest_index(lons, lats, lon1, lat1)
+        x2, y2 = get_nearest_index(lons, lats, lon2, lat1)
+        x3, y3 = get_nearest_index(lons, lats, lon2, lat2)
+        x4, y4 = get_nearest_index(lons, lats, lon1, lat2)
         x = [x1, x2, x3, x4]
         y = [y1, y2, y3, y4]
         return [min(x), max(x), min(y), max(y)]
 
-
-
-
-
 #Objeto para leer IMERG
+ini = str(2017)+'1001'
+fin = str(2017)+'1101'
+fechasd = pd.date_range(start=ini, end=fin)
+fechas = pd.date_range(start=ini, end=fin, freq='H')
+fechas = fechas[0:-1]
+ix = (fechas>'20171013') & (fechas<'20171014')
 
-fecha = '201705280500' # Formato: yyyymmddHHMM (La hora en UTC)
-print(fecha)
-a = lst_horario(fecha, './salidas/')
-print(a.LST.shape)
-exit()
-# Punto de extracción test
-lati = -37.46
-loni = -59.09
+
+LST = np.load('./salidas/output_2017/LST_Octubre_2017.npy')
+DQF = np.load('./salidas/output_2017/DQF_Octubre_2017.npy')
+lats = np.load('./salidas/lats.npy')
+lons = np.load('./salidas/lons.npy')
+
+print(LST.shape)
+print(lats.shape)
+print(lons.shape)
+LST[DQF>0] = np.nan
+# Punto de extracción test: Tandil
+lati = -37.233333
+loni = -59.25
 # Area de extraccion de datos
 lon_a = [-61.5, -58.5]
 lat_a = [-38.1, -36.1]
-x0, y0 = get_nearest_index(a, loni, lati)
-x1, x2, y1, y2 = subset_goes(a, lon_a, lat_a)
-lats = a.lats[x1:x2,y1:y2]
-lons = a.lons[x1:x2,y1:y2]
-dato = a.LST_filtrado[x1:x2,y1:y2]
+x0, y0 = get_nearest_index(lons, lats, loni, lati)
+x1, x2, y1, y2 = subset_goes(lons, lats, lon_a, lat_a)
+#lats = lats[x1:x2,y1:y2]
+#lons = lons[x1:x2,y1:y2]
+
+S0 = LST[ix,:,:].copy()
+S1 = LST[ix,:,:].copy()
+D1 = fechas[ix]
+
+
+
+for i in np.arange(0,23):
+        print(D1[i])
+        dato0 = S0[i,:,:]
+        dato1 = S1[i,:,:]
+        dato2 = dato1[x1:x2,y1:y2]
+        print(dato2[5,9])
+        Imask = np.in1d(np.arange(dato1.shape[0]),np.arange(x1,x2))
+        Jmask = np.in1d(np.arange(dato1.shape[1]),np.arange(y1,y2))
+        dato1[~(Imask[:,None] & Jmask)] = np.nan
+        fig, ax = plt.subplots(1,2, sharex=True, sharey=True)
+        ax[0].pcolormesh(lons, lats, dato0, vmin=-1, vmax=25)
+        im=ax[1].pcolormesh(lons, lats, dato1, vmin=-1, vmax=25)
+        fig.subplots_adjust(right=0.8)
+        cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+        fig.colorbar(im, cax=cbar_ax)
+        plt.show()
+exit()
 
 # Datos para la figura
 fname1 = '../SMN_SQPE/Mapas_semanales/IGN/departamento/departamento.shp'

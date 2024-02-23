@@ -10,18 +10,18 @@ from lst_class_horario_consultoria import lst_horario
 
 start = time.time()
 
-mes = 4
-nmes = 'Abril'
+mes = 10
+nmes = 'Octubre'
 
 if mes in [10,11,12]:
-    years = np.arange(2019,2024)
+    years = np.arange(2017,2024)
 elif mes in [1,2,3,4]:
     years = np.arange(2019,2025)
 
 for year in years:
     print('Trabajando el año', year)
-    ini = str(year)+'0401'
-    fin = str(year)+'0501'
+    ini = str(year)+'1001'
+    fin = str(year)+'1101'
     fechas = pd.date_range(start=ini, end=fin, freq='H')
     print(fechas[0:-1])
     ntime = len(fechas[0:-1])
@@ -46,8 +46,8 @@ for year in years:
             np.save(nfile2, lat)
             np.save(nfile3, lon)
         '''
-    nfile0 = './salidas/LST_' + nmes + '_' + str(year) + '.npy'
-    nfile1 = './salidas/DQF_' + nmes + '_' + str(year) + '.npy'
+    nfile0 = './salidas/output_2017/LST_' + nmes + '_' + str(year) + '.npy'
+    nfile1 = './salidas/output_2017/DQF_' + nmes + '_' + str(year) + '.npy'
     np.save(nfile0, LST)
     np.save(nfile1, DQF)
     

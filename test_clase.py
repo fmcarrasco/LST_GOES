@@ -40,10 +40,10 @@ for hora in range(0,12):
 
 
 for hora in range(0,12):
-    fechad = '20230905' + str(hora).zfill(2) + '00'
-    b = lst_class_horario(fechad, './salidas/20230905/')
+    fechad = '20231113' + str(hora).zfill(2) + '00'
+    b = lst_class_horario(fechad, './salidas/20231113/')
     b.save_map_lst(opt=1)
-
+exit()
 fecha = '20230905'
 b = lst_class_diario(fecha, './salidas/')
 b.mapa_helada_diario()
